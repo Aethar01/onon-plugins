@@ -4,24 +4,27 @@ Example plugins for [onon](https://github.com/Aethar01/onon), a quiet reader for
 
 | Plugin | What it does |
 |---|---|
-| [`file-browser`](./file-browser) | Browse directories and open documents without leaving onon. |
-| [`synctex`](./synctex) | Jump between LaTeX source and PDF in both directions. |
+| [`file-browser`](./plugins/file-browser) | Browse directories and open documents without leaving onon. |
+| [`synctex`](./plugins/synctex) | Jump between LaTeX source and PDF in both directions. |
 
 ## Install
 
-Clone the repository as your plugin directory:
+Clone the repository into your onon directory and link its `plugins` directory beside it:
 
 ```bash
-git clone https://github.com/Aethar01/onon-plugins ~/.config/onon/plugins
+git clone https://github.com/Aethar01/onon-plugins ~/.config/onon/onon-plugins
+ln -s onon-plugins/plugins ~/.config/onon/plugins
 ```
 
-That path works on Linux and macOS. On Windows:
+That works on Linux and macOS. `git pull` in the clone updates the plugins, and `:reload-config` picks them up. If you already have a `plugins` directory, copy in the plugin directories you want instead.
+
+On Windows, copy them out of the clone:
 
 ```powershell
-git clone https://github.com/Aethar01/onon-plugins "$env:APPDATA\onon\plugins"
+git clone https://github.com/Aethar01/onon-plugins "$env:APPDATA\onon\onon-plugins"
+New-Item -ItemType Directory -Force "$env:APPDATA\onon\plugins"
+Copy-Item -Recurse "$env:APPDATA\onon\onon-plugins\plugins\*" "$env:APPDATA\onon\plugins"
 ```
-
-If you already have a `plugins` directory, clone the repository somewhere else and copy in the plugins you want. Each one is a self-contained directory. `git pull` updates a clone.
 
 ## Enable
 

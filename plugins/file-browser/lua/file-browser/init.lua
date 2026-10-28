@@ -100,9 +100,12 @@ local function row_for_entry(entry)
   return { text = entry.name, value = entry.path, secondary = entry.detail or "file", disabled = true }
 end
 
+-- The header shows the directory, and how far reading it has got or how
+-- many entries it holds, muted after it.
 local function set_status(path, text)
-  entries = { { kind = "status", name = text, path = path } }
-  view:set_rows({ { text = path, secondary = text, disabled = true } })
+  entries = {}
+  view:set_title(path .. " (" .. text .. ")")
+  view:set_rows({})
 end
 
 local function human_size(bytes)
@@ -131,10 +134,9 @@ local function format_label(entry)
 end
 
 local function render(path, found)
-  entries = { { kind = "status", name = path, path = path } }
-  local rows = {
-    { text = path, secondary = tostring(#found) .. " entries", disabled = true }
-  }
+  entries = {}
+  local rows = {}
+  view:set_title(path .. " (" .. tostring(#found) .. " entries)")
   if not is_root(path) then
     local parent = path_util.dirname(path)
     entries[#entries + 1] = { kind = "directory", name = "..", path = parent }
@@ -145,7 +147,7 @@ local function render(path, found)
     rows[#rows + 1] = row_for_entry(entry)
   end
   view:set_rows(rows)
-  view:set_selected(2)
+  view:set_selected(1)
 end
 
 local function scan(path)
@@ -213,6 +215,7 @@ view = onon.ui.create({
   id = "file-browser",
   title = "File Browser",
   searchable = true,
+  empty = "Nothing here",
   rows = {},
   on_select = function(index)
     local entry = entries[index]

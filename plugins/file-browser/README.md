@@ -66,7 +66,7 @@ file_browser.remember_directory = false
 
 ## Behaviour
 
-Directories sort first, then names case-insensitively. The header row shows the
+Directories sort first, then names case-insensitively. The header shows the
 current directory and its entry count. `../` moves up, and is absent at a
 filesystem root, detected as `dirname(path) == path` — true for both `/` and
 `C:\`.

@@ -61,6 +61,7 @@ onon.bind("o", file_browser.actions.browse)
 | `.` | Shows or hides hidden entries. |
 | `"x` | Sets mark `x` to this directory. Kept across restarts. |
 | `'x` | Jumps to mark `x`; `''` jumps back to where the last jump left. |
+| `p`, `<C-p>` | Shows or hides the preview; in the find, `<C-p>`. Remembered. |
 | `<C-f>` | Finds documents anywhere under this directory, typing to filter: ranked by fzf, best first, when it is installed. |
 
 The header shows the directory on the left and the sort, and whether hidden
@@ -86,6 +87,9 @@ file_browser.sort = "modified"
 | `remember_directory` | `true` | Reopen where the browser last was. |
 | `columns` | `{ "size", "modified" }` | Columns beside the name, in order, from `type`, `size` and `modified`. `{}` shows names only. |
 | `sort` | `"name"` | The sort until `s` picks another: `name`, `modified` or `size`. |
+| `preview` | `false` | Show the preview until `p` first toggles it. |
+| `preview_side` | `"right"` | The side of the selected row the card opens on: `right` or `left`, the other without room. |
+| `preview_size` | `"14%"` | The card's width, a share of the window; 14% fits beside the browser. Its height fits the first page. |
 | `find_ignore` | `{ "node_modules", "Library", "__pycache__" }` | Directory names the find skips. Hidden directories are skipped unless shown. |
 | `find_max_directories` | `20000` | The most directories one find reads. |
 | `fzf` | `"fzf"` | The fzf that ranks the find's matches: a name on `PATH` or a path. It is also looked for where it is usually installed (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.fzf/bin`…), as an onon started from the Dock has a short `PATH`. `""`, or none found, filters by substring. |
@@ -93,6 +97,17 @@ file_browser.sort = "modified"
 Options are read when the browser first opens, so set them in `config.lua`.
 `start_path` accepts `~` and native separators; paths are handled through
 `onon.path`, so drive letters and backslashes work on Windows.
+
+## Preview
+
+`p` (in the find, `<C-p>`) shows a small card beside the selected row, as a
+submenu is, on the side `preview_side` says (the other if there is no room): the
+document's first page and how many pages it has. It opens once the selection
+settles on a document and the document has loaded, in the background with
+`onon.load_document`, and is shaped to its first page; it closes on a folder,
+when the preview is turned off, or when the browser closes. Moving between
+documents keeps the last page on the card until the next has loaded. It needs
+an onon with `onon.load_document`; an older one says so.
 
 ## Behaviour
 
@@ -117,11 +132,19 @@ keyed by plugin ID, and survive config reloads and restarts. They are plain
 absolute paths, and will not resolve if one profile is shared between
 operating systems.
 
+## Layout
+
+`lua/file-browser/`: `init.lua` registers the plugin, its options, actions and
+commands, and gives the parts a context they find each other through:
+`listing.lua` (the browser), `find.lua`, `preview.lua`, `marks.lua`, and the
+stateless `tabs.lua` and `util.lua`. The modules load as
+`require("file-browser.listing")`, which needs an onon that finds a plugin's
+modules as Lua's `require` does.
+
 ## Notes
 
-The plugin uses the filesystem, path, tabs and storage surfaces. It runs no
-external commands and no shell, and behaves identically on Linux, macOS, and
-Windows.
+The plugin uses the filesystem, path, tabs, background document and storage surfaces, and runs fzf when it finds one. It runs no
+shell, and behaves identically on Linux, macOS, and Windows.
 
 Directory reads are asynchronous, and are cancelled on navigating away or
 closing the view. A slow or unresponsive filesystem does not block the viewer.

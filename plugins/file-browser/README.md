@@ -45,46 +45,83 @@ onon.bind("o", file_browser.actions.browse)
 ```
 
 `:file-browser-open` opens the browser, optionally at a given directory:
-`:file-browser-open /path/to/directory`.
+`:file-browser-open /path/to/directory`. `file_browser.actions.find` and
+`:file-browser-find [directory]` open the find on its own.
+
+## Keys
+
+| Key | Does |
+|---|---|
+| `Enter` | Enters a directory; opens a document, or shows its tab if it is open already. |
+| `<C-t>`, `<S-CR>` | Opens the document in a new tab (or shows its tab: onon keeps one tab per document). |
+| `l` | Enters a directory. |
+| `h`, `-`, `<BS>` | Goes up, with the directory you left selected. |
+| `/` | Filters the listing by name. |
+| `s` | Sorts by name, then newest first, then largest first. Remembered. |
+| `.` | Shows or hides hidden entries. |
+| `"x` | Sets mark `x` to this directory. Kept across restarts. |
+| `'x` | Jumps to mark `x`; `''` jumps back to where the last jump left. |
+| `<C-f>` | Finds documents anywhere under this directory, typing to filter: ranked by fzf, best first, when it is installed. |
+
+The header shows the directory on the left and the sort, and whether hidden
+entries are shown, muted on the right (with an onon too old for view details,
+in parentheses after the directory). Documents open in a tab are marked `○`,
+and the one shown `●`. Each directory remembers the entry last selected in it
+while onon runs.
 
 ## Options
 
 ```lua
 file_browser.start_path = "~/Documents"
 file_browser.show_hidden = true
-file_browser.remember_directory = false
+file_browser.columns = { "type", "size", "modified" }
+file_browser.sort = "modified"
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
 | `start_path` | `""` | Directory to open. Empty uses the last visited directory, then the current document's directory, then home. |
-| `show_hidden` | `false` | Show entries whose names begin with a dot. |
+| `show_hidden` | `false` | Show entries whose names begin with a dot at first; `.` toggles it. |
+| `show_other_files` | `true` | List files onon cannot open, greyed out. False hides them. |
 | `remember_directory` | `true` | Reopen where the browser last was. |
+| `columns` | `{ "size", "modified" }` | Columns beside the name, in order, from `type`, `size` and `modified`. `{}` shows names only. |
+| `sort` | `"name"` | The sort until `s` picks another: `name`, `modified` or `size`. |
+| `find_ignore` | `{ "node_modules", "Library", "__pycache__" }` | Directory names the find skips. Hidden directories are skipped unless shown. |
+| `find_max_directories` | `20000` | The most directories one find reads. |
+| `fzf` | `"fzf"` | The fzf that ranks the find's matches: a name on `PATH` or a path. It is also looked for where it is usually installed (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.fzf/bin`…), as an onon started from the Dock has a short `PATH`. `""`, or none found, filters by substring. |
 
+Options are read when the browser first opens, so set them in `config.lua`.
 `start_path` accepts `~` and native separators; paths are handled through
 `onon.path`, so drive letters and backslashes work on Windows.
 
 ## Behaviour
 
-Directories sort first, then names case-insensitively. The header shows the
-current directory and its entry count. `../` moves up, and is absent at a
-filesystem root, detected as `dirname(path) == path` — true for both `/` and
-`C:\`.
-
-Openable documents show their format and size (`EPUB · 1.2 MB`).
+Directories sort first. `../` moves up, and is absent at a filesystem root,
+detected as `dirname(path) == path` — true for both `/` and `C:\`.
 
 Symbolic links are followed, so a linked directory is entered like any other.
 An entry whose target is missing is listed as `unreadable`; the rest of the
 listing is unaffected.
 
-The last visited directory lives in onon's session database, keyed by plugin
-ID, and survives config reloads and restarts. It is a plain absolute path, and
-will not resolve if one profile is shared between operating systems.
+With fzf, each query runs `fzf --filter` over the documents found, one at a
+time; a query typed or documents found meanwhile are ranked once it is done,
+and the header shows how many match. If fzf fails, the find says so and
+filters by substring for the rest of the session.
+
+The find walks breadth first, eight directories at a time, so shallow documents
+come first and the list fills as it reads. It does not follow links, so a link
+back up the tree cannot loop. It stops after `find_max_directories` and says so.
+
+The last directory, the sort and the marks live in onon's session database,
+keyed by plugin ID, and survive config reloads and restarts. They are plain
+absolute paths, and will not resolve if one profile is shared between
+operating systems.
 
 ## Notes
 
-The plugin uses the filesystem, path, and storage surfaces. It runs no external
-commands and no shell, and behaves identically on Linux, macOS, and Windows.
+The plugin uses the filesystem, path, tabs and storage surfaces. It runs no
+external commands and no shell, and behaves identically on Linux, macOS, and
+Windows.
 
 Directory reads are asynchronous, and are cancelled on navigating away or
 closing the view. A slow or unresponsive filesystem does not block the viewer.

@@ -107,8 +107,10 @@ with `onon.load_document`, and is shaped to its first page. A document selected
 from rest starts loading at once; while the selection is moving, as a held key
 moves it, only the one it stops on loads. It closes on a folder, when the
 preview is turned off, or when the browser closes. Moving between documents
-keeps the last page on the card until the next has loaded, and keeps the card
-itself open, unless the next page is a different shape. It needs an onon with
+keeps the last page on the card until the next has loaded and rendered (with
+the document's `prepare_page`, where onon has it), and keeps the card
+itself open, resized where it is to a page of a different shape (an onon
+without `view:set_size` closes it and opens another). It needs an onon with
 `onon.load_document`; an older one says so.
 
 ## Behaviour

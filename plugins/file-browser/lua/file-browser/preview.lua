@@ -7,7 +7,7 @@
 
 local PREVIEW_KEY = "preview"
 local SETTLE_MS = 120 -- how long the selection stays put to be at rest
-local PAD = 6 -- logical pixels around what the card shows
+local PAD = 6 -- logical pixels around the card's text; its page fills it
 
 return function(ctx)
   local plugin = ctx.plugin
@@ -49,7 +49,7 @@ return function(ctx)
       canvas:text(PAD, PAD, "Loading", "muted")
       return
     end
-    canvas:document_page(doc, 1, PAD, PAD, box.w - 2 * PAD, box.h - 2 * PAD)
+    canvas:document_page(doc, 1, 0, 0, box.w, box.h)
   end
 
   local function make_card(width, height)
@@ -65,32 +65,35 @@ return function(ctx)
   end
 
   local function height_for(width, aspect)
-    return math.floor((width - 2 * PAD) * aspect + 2 * PAD + 0.5)
+    return math.floor(width * aspect + 0.5)
   end
 
   -- open_card shows the card for doc, open: preview_size wide, a share of
   -- the window as it is now, and as tall as its first page is at that
-  -- width. A card already open that is the right height is kept and drawn
-  -- again, so moving between documents of one shape neither closes nor
-  -- fades it. A new card's width is learnt from one made a pixel tall,
-  -- which goes before anything is drawn.
+  -- width. A card already open is kept and given the new page's height
+  -- where it is, so moving between documents neither closes nor fades it.
+  -- A new card opens a pixel tall, to learn its width, and has its height
+  -- before anything is drawn.
   local function open_card()
     local aspect = math.sqrt(2) -- A4's, for a document whose page cannot be read
     local ok, info = pcall(doc.page_info, doc, 1)
     if ok and info.width > 0 then
       aspect = info.height / info.width
     end
-    if card and card:visible() then
-      local width, height = card:size()
-      if height == height_for(width, aspect) then
-        return card:redraw()
-      end
-      card:close()
+    if not (card and card:visible()) then
+      make_card(plugin.preview_size, 1)
     end
-    make_card(plugin.preview_size, 1)
-    local width = card:size()
-    card:close()
-    make_card(width, height_for(width, aspect))
+    local width, height = card:size()
+    local wanted = height_for(width, aspect)
+    if height == wanted then
+      return card:redraw()
+    end
+    if card.set_size then
+      card:set_size(nil, wanted)
+      return card:redraw()
+    end
+    card:close() -- an onon without set_size: another card, of that height
+    make_card(width, wanted)
   end
 
   -- init reads whether the preview shows, once options are set: what p
@@ -119,7 +122,9 @@ return function(ctx)
   end
 
   -- load loads what, unless it is on the card or loading, and opens the
-  -- card for it once it has.
+  -- card for it once it has. A card already open keeps the page on it
+  -- until the next has rendered, at the card's width, so that the card is
+  -- never blank between them.
   local function load(what)
     local wanted = pending or doc
     if wanted and wanted.path == what.path then
@@ -127,13 +132,26 @@ return function(ctx)
     end
     close(pending)
     local loading
-    loading = onon.load_document(what.path, function()
+    local function show()
       if pending ~= loading then
         return -- the selection moved on meanwhile
       end
       close(doc)
       doc, pending = loading, nil
       open_card() -- the page, or why it could not open
+    end
+    loading = onon.load_document(what.path, function()
+      if pending ~= loading then
+        return
+      end
+      -- prepare_page needs a newer onon; without it the page renders once
+      -- the card draws it.
+      if card and card:visible() and loading:state() == "open" and loading.prepare_page then
+        if pcall(loading.prepare_page, loading, 1, (card:size()), show) then
+          return
+        end
+      end
+      show()
     end)
     pending = loading
   end

@@ -102,12 +102,14 @@ Options are read when the browser first opens, so set them in `config.lua`.
 
 `p` (in the find, `<C-p>`) shows a small card beside the selected row, as a
 submenu is, on the side `preview_side` says (the other if there is no room): the
-document's first page and how many pages it has. It opens once the selection
-settles on a document and the document has loaded, in the background with
-`onon.load_document`, and is shaped to its first page; it closes on a folder,
-when the preview is turned off, or when the browser closes. Moving between
-documents keeps the last page on the card until the next has loaded. It needs
-an onon with `onon.load_document`; an older one says so.
+document's first page. It opens once the document has loaded, in the background
+with `onon.load_document`, and is shaped to its first page. A document selected
+from rest starts loading at once; while the selection is moving, as a held key
+moves it, only the one it stops on loads. It closes on a folder, when the
+preview is turned off, or when the browser closes. Moving between documents
+keeps the last page on the card until the next has loaded, and keeps the card
+itself open, unless the next page is a different shape. It needs an onon with
+`onon.load_document`; an older one says so.
 
 ## Behaviour
 

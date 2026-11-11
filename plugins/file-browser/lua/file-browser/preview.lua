@@ -1,20 +1,21 @@
 -- The preview: a small card attached beside the selected row of the
--- browser, or the find, as a submenu is, showing the document's first page
--- and how many it has. It opens once the selection settles on a document
--- and the document has loaded, in the background, shaped to its first
--- page, and closes on anything else.
+-- browser, or the find, as a submenu is, showing the document's first
+-- page. It opens once the document has loaded, in the background, shaped
+-- to its first page, and closes on anything else. A document selected
+-- from rest loads at once; while the selection is moving, as a held key
+-- moves it, only the one it stops on loads.
 
 local PREVIEW_KEY = "preview"
-local DELAY_MS = 120
-local CAPTION = 20 -- logical pixels under the page for its count
+local SETTLE_MS = 120 -- how long the selection stays put to be at rest
 local PAD = 6 -- logical pixels around what the card shows
 
 return function(ctx)
   local plugin = ctx.plugin
   local preview = { shown = false }
   -- The card, the view it follows, the document on it, and the one loading
-  -- to take its place, which it shows until that has opened.
-  local card, list, doc, pending, timer
+  -- to take its place, which it shows until that has opened. settle runs
+  -- while the selection is moving, and latest is the document it is on.
+  local card, list, doc, pending, settle, latest
   local loaded = false
 
   local function close(d)
@@ -24,10 +25,6 @@ return function(ctx)
   end
 
   local function close_documents()
-    if timer then
-      timer:cancel()
-      timer = nil
-    end
     close(doc)
     close(pending)
     doc, pending = nil, nil
@@ -52,9 +49,7 @@ return function(ctx)
       canvas:text(PAD, PAD, "Loading", "muted")
       return
     end
-    local _, h = canvas:document_page(doc, 1, PAD, PAD, box.w - 2 * PAD, box.h - CAPTION - 2 * PAD)
-    local pages = doc:page_count()
-    canvas:text(PAD, PAD + h + 4, pages == 1 and "1 page" or pages .. " pages", "muted")
+    canvas:document_page(doc, 1, PAD, PAD, box.w - 2 * PAD, box.h - 2 * PAD)
   end
 
   local function make_card(width, height)
@@ -69,21 +64,33 @@ return function(ctx)
     card:show()
   end
 
+  local function height_for(width, aspect)
+    return math.floor((width - 2 * PAD) * aspect + 2 * PAD + 0.5)
+  end
+
   -- open_card shows the card for doc, open: preview_size wide, a share of
   -- the window as it is now, and as tall as its first page is at that
-  -- width, with its count. The width is learnt from a card made a pixel
-  -- tall, which goes before anything is drawn.
+  -- width. A card already open that is the right height is kept and drawn
+  -- again, so moving between documents of one shape neither closes nor
+  -- fades it. A new card's width is learnt from one made a pixel tall,
+  -- which goes before anything is drawn.
   local function open_card()
     local aspect = math.sqrt(2) -- A4's, for a document whose page cannot be read
     local ok, info = pcall(doc.page_info, doc, 1)
     if ok and info.width > 0 then
       aspect = info.height / info.width
     end
-    close_card()
+    if card and card:visible() then
+      local width, height = card:size()
+      if height == height_for(width, aspect) then
+        return card:redraw()
+      end
+      card:close()
+    end
     make_card(plugin.preview_size, 1)
     local width = card:size()
     card:close()
-    make_card(width, math.floor((width - 2 * PAD) * aspect + CAPTION + 2 * PAD + 0.5))
+    make_card(width, height_for(width, aspect))
   end
 
   -- init reads whether the preview shows, once options are set: what p
@@ -111,44 +118,64 @@ return function(ctx)
     end
   end
 
+  -- load loads what, unless it is on the card or loading, and opens the
+  -- card for it once it has.
+  local function load(what)
+    local wanted = pending or doc
+    if wanted and wanted.path == what.path then
+      return
+    end
+    close(pending)
+    local loading
+    loading = onon.load_document(what.path, function()
+      if pending ~= loading then
+        return -- the selection moved on meanwhile
+      end
+      close(doc)
+      doc, pending = loading, nil
+      open_card() -- the page, or why it could not open
+    end)
+    pending = loading
+  end
+
   -- show shows what, an entry as the browser's or the find's are, or
   -- nothing for nil.
   function preview.show(what)
     if not preview.shown or not list then
       return
     end
+    -- A move from rest loads now; a move within SETTLE_MS of the last
+    -- waits, and the document the selection stops on loads once it has
+    -- been there SETTLE_MS, not each one passed on the way.
+    local moving = settle ~= nil
+    if settle then
+      settle:cancel()
+    end
+    settle = plugin.timer:after(SETTLE_MS, function()
+      settle = nil
+      if latest then
+        load(latest)
+      end
+    end)
     if not what or what.kind ~= "document" then
+      latest = nil
       close_documents()
       return close_card()
     end
-    local wanted = pending or doc
-    if wanted and wanted.path == what.path then
-      return
+    latest = what
+    if not moving then
+      load(what)
     end
-    if timer then
-      timer:cancel()
-    end
-    -- Loaded, and the card opened, once the selection settles, not for
-    -- each document passed on the way to one.
-    timer = plugin.timer:after(DELAY_MS, function()
-      timer = nil
-      close(pending)
-      local loading
-      loading = onon.load_document(what.path, function()
-        if pending ~= loading then
-          return -- the selection moved on meanwhile
-        end
-        close(doc)
-        doc, pending = loading, nil
-        open_card() -- the page, or why it could not open
-      end)
-      pending = loading
-    end)
   end
 
   -- release closes the card and lets its document go, as the browser
   -- closes.
   function preview.release()
+    if settle then
+      settle:cancel()
+      settle = nil
+    end
+    latest = nil
     close_documents()
     close_card()
   end

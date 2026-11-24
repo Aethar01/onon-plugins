@@ -5,6 +5,8 @@
 -- from rest loads at once; while the selection is moving, as a held key
 -- moves it, only the one it stops on loads.
 
+local remote = require("file-browser.remote")
+
 local PREVIEW_KEY = "preview"
 local SETTLE_MS = 120 -- how long the selection stays put to be at rest
 local PAD = 6 -- logical pixels around the card's text; its page fills it
@@ -175,7 +177,7 @@ return function(ctx)
         load(latest)
       end
     end)
-    if not what or what.kind ~= "document" then
+    if not what or what.kind ~= "document" or remote.is_remote(what.path) then
       latest = nil
       close_documents()
       return close_card()

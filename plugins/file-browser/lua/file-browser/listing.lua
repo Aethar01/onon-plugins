@@ -3,6 +3,7 @@
 
 local util = require("file-browser.util")
 local tabs = require("file-browser.tabs")
+local remote = require("file-browser.remote")
 local path_util = onon.path
 
 local SORT_KEY = "sort"
@@ -160,7 +161,7 @@ return function(ctx)
     end
 
     if not util.is_root(state.dir) then
-      add({ kind = "parent", name = "..", path = path_util.dirname(state.dir) })
+      add({ kind = "parent", name = "..", path = util.dirname(state.dir) })
     end
     if state.error then
       add({ kind = "error", name = state.error })
@@ -213,11 +214,16 @@ return function(ctx)
     -- Symlinks are followed so a linked directory can be entered like any
     -- other; entries whose target is missing come back with a per-entry
     -- error.
-    state.scan = plugin.fs:read_dir(path, { follow_symlinks = true }, function(result)
+    -- A remote directory, host:path, is listed over ssh, which says where
+    -- it is absolutely.
+    local function done(result)
       if generation ~= state.generation then
         return
       end
       state.scan = nil
+      if result.success and result.dir then
+        path = result.dir
+      end
       state.dir = path
       state.listing, state.error = {}, nil
 
@@ -235,7 +241,17 @@ return function(ctx)
         end
       end
       render()
-    end)
+    end
+    if remote.is_remote(path) then
+      if not (state.dir and remote.is_remote(state.dir)) then
+        state.entries = {}
+        view:set_title(util.display_path(path))
+        view:set_rows({ { text = "Connecting…", disabled = true } })
+      end
+      state.scan = remote.read_dir(plugin, path, done)
+    else
+      state.scan = plugin.fs:read_dir(path, { follow_symlinks = true }, done)
+    end
   end
 
   -- go moves to path, coming back to `from` selected, as going up does.
@@ -249,7 +265,7 @@ return function(ctx)
 
   local function go_up()
     if state.dir and not util.is_root(state.dir) then
-      go(path_util.dirname(state.dir), state.dir)
+      go(util.dirname(state.dir), state.dir)
     end
   end
 

@@ -55,6 +55,16 @@ local browser = onon.plugin.register("file-browser", {
       default = "fzf",
       description = "The fzf that ranks the find's matches: a name on PATH or a path, also looked for where it is usually installed. Empty, or none found, matches substrings."
     },
+    ssh = {
+      type = "string",
+      default = "ssh",
+      description = "The ssh that lists remote directories, host:path: a name on PATH or a path."
+    },
+    ssh_args = {
+      type = "list",
+      default = {},
+      description = "Arguments given to ssh before the host, such as { \"-p\", \"2222\" }."
+    },
     find_max_directories = {
       type = "integer",
       default = 20000,

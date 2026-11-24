@@ -271,6 +271,10 @@ return function(ctx)
   -- over the browser if it is open.
   function find.open(root, show_hidden)
     root = util.normalize(plugin, root)
+    if require("file-browser.remote").is_remote(root) then
+      onon.message("file browser: the find searches local directories only")
+      return
+    end
     find_fzf(function()
       -- With fzf, the find ranks the rows itself; without, the view
       -- filters them by substring.

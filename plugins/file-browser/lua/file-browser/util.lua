@@ -3,13 +3,24 @@
 
 local path_util = onon.path
 local platform = onon.platform
+local remote = require("file-browser.remote")
 
 local util = {}
 
 util.LAST_DIRECTORY_KEY = "last-directory"
 
 function util.is_root(path)
+  if remote.is_remote(path) then
+    return remote.is_root(path)
+  end
   return path_util.dirname(path) == path
+end
+
+function util.dirname(path)
+  if remote.is_remote(path) then
+    return remote.dirname(path)
+  end
+  return path_util.dirname(path)
 end
 
 function util.is_hidden(name)
@@ -75,7 +86,7 @@ function util.document_directory()
   if path == "" then
     return nil
   end
-  return path_util.dirname(path)
+  return util.dirname(remote.from_uri(path))
 end
 
 -- default_directory is where plugin's browser starts: start_path, else the
@@ -98,6 +109,9 @@ function util.normalize(plugin, path)
   path = util.trim(path or "")
   if path == "" then
     path = util.default_directory(plugin)
+  end
+  if remote.is_remote(path) then
+    return remote.from_uri(path) -- made absolute as it is listed
   end
   return path_util.absolute(path_util.expand_home(path))
 end

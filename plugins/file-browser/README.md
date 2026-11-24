@@ -73,15 +73,34 @@ file_browser.sort = "modified"
 | `show_other_files` | `true` | List files onon cannot open, greyed out. `false` hides them. |
 | `remember_directory` | `true` | Reopen where the browser last was. |
 | `columns` | `{ "size", "modified" }` | Columns beside the name, in order, from `type`, `size` and `modified`. `{}` shows names only. |
-| `sort` | `"name"` | Initial sort until `s` picks another: `name`, `modified` or `size`. |
-| `preview` | `false` | Show the preview card initially until `p` toggles it. |
-| `preview_side` | `"right"` | Side of the selected row the preview card opens on: `right` or `left` (falls back to the other side if there is no room). |
-| `preview_size` | `"14%"` | Preview card width as a share of the window (`14%` fits beside the browser); height adapts to the first page. |
-| `find_ignore` | `{ "node_modules", "Library", "__pycache__" }` | Directory names skipped during recursive find. Hidden directories are skipped unless shown. |
-| `find_max_directories` | `20000` | Maximum number of directories one find reads. |
-| `fzf` | `"fzf"` | `fzf` executable used to rank find matches (name on `PATH` or full path; also checked in `/opt/homebrew/bin`, `/usr/local/bin`, `~/.fzf/bin`, etc. for Dock launches). `""`, or none found, falls back to substring filtering. |
+| `sort` | `"name"` | The sort until `s` picks another: `name`, `modified` or `size`. |
+| `preview` | `false` | Show the preview until `p` first toggles it. |
+| `preview_side` | `"right"` | The side of the selected row the card opens on: `right` or `left`, the other without room. |
+| `preview_size` | `"14%"` | The card's width, a share of the window; 14% fits beside the browser. Its height fits the first page. |
+| `find_ignore` | `{ "node_modules", "Library", "__pycache__" }` | Directory names the find skips. Hidden directories are skipped unless shown. |
+| `find_max_directories` | `20000` | The most directories one find reads. |
+| `ssh` | `"ssh"` | The ssh that lists remote directories: a name on `PATH` or a path. |
+| `ssh_args` | `{}` | Arguments given to ssh before the host, such as `{ "-p", "2222" }`. |
+| `fzf` | `"fzf"` | The fzf that ranks the find's matches: a name on `PATH` or a path. It is also looked for where it is usually installed (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.fzf/bin`…), as an onon started from the Dock has a short `PATH`. `""`, or none found, filters by substring. |
 
 `start_path` accepts `~` and native separators; paths are handled through `onon.path`, so drive letters and backslashes work on Windows.
+
+## Remote directories
+
+The browser lists directories on a host reached over SSH, named as scp
+names them: `:file-browser-open tex:` opens the remote home,
+`:file-browser-open tex:/srv/papers` a directory, and `user@host:docs` one
+under the home. `sftp://`, `ssh://` and `scp://` URIs work too. With a
+remote document open, the browser starts beside it. Marks, the last
+directory, `..` and `l`/`h` work as they do locally, and documents open as
+onon opens `host:path`.
+
+Each listing runs `ssh host sh -s` with your `~/.ssh/config`, in batch mode
+(so keys or an agent, no password prompt), without its port forwards, and
+lists with GNU `find` where the host has it, else `stat`. Off Windows,
+connections are shared for a minute (`ControlPath ~/.ssh/onon-%C`), so
+moving between directories does not log in again. The preview and the find
+are local only.
 
 ## Preview
 
@@ -116,4 +135,8 @@ Modules load via `require("file-browser.<module>")`.
 
 ## Notes
 
-The plugin uses onon's built-in filesystem, path, tab, background-document and storage APIs, plus `fzf` when found (invoked directly, with no shell). Directory reads run asynchronously and cancel on navigating away or closing the view, so a slow or unresponsive filesystem never blocks the viewer.
+The plugin uses the filesystem, path, tabs, background document and storage surfaces, and runs fzf when it finds one, and ssh for remote directories. It runs no local
+shell, and behaves identically on Linux, macOS, and Windows.
+
+Directory reads are asynchronous, and are cancelled on navigating away or
+closing the view. A slow or unresponsive filesystem does not block the viewer.

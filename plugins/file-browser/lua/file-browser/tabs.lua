@@ -1,5 +1,7 @@
 -- The window's tabs, as the browser and the find mark and open documents.
 
+local remote = require("file-browser.remote")
+
 local tabs = {}
 
 -- open is the paths open in the window's tabs, to their tab index.
@@ -7,7 +9,7 @@ function tabs.open()
   local open = {}
   for _, tab in ipairs(onon.tabs.list()) do
     if tab.path ~= "" then
-      open[tab.path] = tab.index
+      open[remote.from_uri(tab.path)] = tab.index
     end
   end
   return open
@@ -15,7 +17,7 @@ end
 
 -- marker marks the document shown ● and others open in a tab ○.
 function tabs.marker(path, open)
-  if path == onon.document.path then
+  if path == remote.from_uri(onon.document.path or "") then
     return "●"
   end
   if open[path] then
